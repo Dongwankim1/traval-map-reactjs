@@ -1,4 +1,4 @@
 # Trabvel Map APP with react js,node js,Mapbox
 
 
-!('1.JPG');
+!('./img/1.JPG');
