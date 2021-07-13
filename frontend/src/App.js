@@ -7,14 +7,21 @@ import RoomIcon from '@material-ui/icons/Room';
 import StarIcon from '@material-ui/icons/Star';
 import axios from 'axios';
 import {format} from "timeago.js"
+import Register from './components/Register';
+import Login from './components/Login';
 function App() {
-  const currentUser = "jain"
+  const myStorage = window.localStorage;
+  
+  const [currentUser,setCurrentUser] = useState(null);
+
   const [pins, setPins] = useState([])
   const [currentPlaceId,setCurrentPlaceId] = useState(null);
   const [newPlace,setNewPlace] = useState(null);
   const [title,setTitle] = useState(null);
   const [desc,setDesc] = useState(null);
   const [rating,setRating] = useState(null);
+  const [showRegister,setShowRegister] = useState(false);
+  const [showLogin,setShowLogin] = useState(false);
   const [viewport, setViewport] = useState({
     width: '100vw',
     height: '100vh',
@@ -24,11 +31,15 @@ function App() {
   });
 
   React.useEffect(() => {
+    if(myStorage.getItem('user')){
+      setCurrentUser(true);
+    }
+
     const getPins = async () => {
       try {
         const res = await axios.get("/pins");
         setPins(res.data);
-        console.log(res.data);
+   
       } catch (error) {
         console.log(error)
       }
@@ -39,7 +50,7 @@ function App() {
   const handleMarkerClick = (id,lat,long)=>{
     setCurrentPlaceId(id);
     setViewport({...viewport,latitude:lat,longitude:long})
-    console.log(currentPlaceId)
+
   }
 
   const handleAddClick = (e) =>{
@@ -47,9 +58,31 @@ function App() {
     setNewPlace({
       long,lat
     })
-    console.log(newPlace)
-}
 
+}
+const handleLogout =() =>{
+  myStorage.removeItem('user');
+  setCurrentUser(null);
+}
+  const handleSubmit = async (e)=>{
+    e.preventDefault();
+    const newPin ={
+      username:currentUser,
+      title,
+      desc,
+      rating,
+      lat:newPlace.lat,
+      long:newPlace.long
+    }
+
+    try {
+      const res = await axios.post("/pins",newPin);
+      setPins([...pins,res.data]);
+      setNewPlace(null);
+    } catch (error) {
+      console.log(error)
+    }
+  }
   return (
     <>
       <ReactMapGL
@@ -64,7 +97,7 @@ function App() {
         {pins.map((p,index) => (
           
           <>
-          
+        
           <Marker latitude={p.lat} longitude={p.long} offsetLeft={-20} offsetTop={-10}>
             <RoomIcon style={{ fontSize: viewport.zoom * 5, color: p.username=== currentUser ? "tomato":"slateblue",cursor:"pointer" }}  onClick={() =>handleMarkerClick(p._id,p.lat,p.long)}/>
           </Marker>
@@ -77,17 +110,13 @@ function App() {
             anchor="left" >
             <div className="card">
               <label>Place</label>
-              <h4 className="place">Eiffe Tower</h4>
+              <h4 className="place">{p.title}</h4>
               <label>Review</label>
-              <p className="desc">Beautiful place. I like it.</p>
+              <p className="desc">{p.desc}</p>
               <label>Rating</label>
               <div className="stars">
-               
-                <StarIcon className="star" />
-                <StarIcon className="star" />
-                <StarIcon className="star" />
-                <StarIcon className="star" />
-                <StarIcon className="star" />
+                {Array(parseInt(p.rating)).fill(<StarIcon className="star" />)}
+         
               </div>
 
               <label>Information</label>
@@ -105,13 +134,13 @@ function App() {
             onClose={()=>setNewPlace(null)}
             anchor="left" >
            <div>
-            <form>
+            <form onSubmit={handleSubmit}>
               <label>Title</label>
-              <input placeholder="Enter a title"></input>
+              <input placeholder="Enter a title" onChange={(e)=>setTitle(e.target.value)}></input>
               <label>Review</label>
-              <textarea placeholder="Say us something about this place."/>
+              <textarea placeholder="Say us something about this place." onChange={(e)=>setDesc(e.target.value)}/>
               <label>Rating</label>
-              <select>
+              <select onChange={(e)=>setRating(e.target.value)}>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -128,8 +157,14 @@ function App() {
         </>
 
         ))}
-        
-      </ReactMapGL>
+        {currentUser ? ( <button className="button logout" onClick={()=>handleLogout()}>Logout</button>) :(<div className="buttons">
+        <button className="button login" onClick={() =>setShowLogin(true)}>Login</button>
+        <button className="button register" onClick={()=>setShowRegister(true)}>Register</button>
+        </div>)}
+       
+        {showRegister && <Register setShowRegister={setShowRegister}/>}      
+        {showLogin && <Login setShowLogin={setShowLogin} setCurrentUser={setCurrentUser} myStorage={myStorage}/>}   
+        </ReactMapGL>
 
     </>
   );
